@@ -321,86 +321,102 @@
           }, 3000);
       }
   }
-
+ let currentUser = null;
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwPPvLwlIeI0Z_yRvOBvXCFQVtTCuKLCVirt0FZ4rJpz4UzQs9ldz83sWLgM2zpGWqs/exec'; // Replace YOUR_SCRIPT_ID
 
-  document.getElementById('loginForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      clearMessages();
 
-      const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-      const password = document.getElementById('loginPassword').value;
 
-      if (!email || !password) {
-          showMessage('loginError', 'Please fill in all fields.', true);
-          return;
-      }
 
-      try {
-          const res = await fetch(`${SCRIPT_URL}?action=getUsers`, { method: "GET", mode: "cors" });
-          const data = await res.json();
-
-          if (data.status !== 'success' || !data.users) {
-              showMessage('loginError', 'Could not retrieve users.', true);
-              return;
-          }
-
-          const user = data.users.find(u => u.email === email && u.password === password);
-          if (!user) {
-              showMessage('loginError', 'Invalid email or password.', true);
-              return;
-          }
-
-          currentUser = user;
-          localStorage.setItem('currentUser', JSON.stringify(user));
-          updateUIForLoggedInUser();
-
-          showMessage('loginSuccess', 'Login successful!');
-          setTimeout(() => closeModal('loginModal'), 1500);
-      } catch (err) {
-          showMessage('loginError', 'Server error.', true);
-      }
+// Function to clear messages
+function clearMessages() {
+  document.querySelectorAll('.error-message, .success-message').forEach(msg => {
+      msg.style.display = 'none';
+      msg.textContent = '';
   });
+}
 
-  document.getElementById('signupForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      clearMessages();
+// Function to show messages
+function showMessage(elementId, message, isError = false) {
+  const element = document.getElementById(elementId);
+  element.textContent = message;
+  element.style.display = 'block';
+  if (!isError) setTimeout(() => element.style.display = 'none', 3000);
+}
 
-      const name = document.getElementById('signupName').value.trim();
-      const email = document.getElementById('signupEmail').value.trim().toLowerCase();
-      const password = document.getElementById('signupPassword').value;
-      const confirmPassword = document.getElementById('signupConfirmPassword').value;
+// Login handler
+document.getElementById('loginForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  clearMessages();
 
-      if (!name || !email || !password || !confirmPassword) {
-          showMessage('signupError', 'Please fill in all fields.', true);
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const password = document.getElementById('loginPassword').value;
+
+  if (!email || !password) {
+      showMessage('loginError', 'Please fill in all fields.', true);
+      return;
+  }
+
+  try {
+      const res = await fetch(`${SCRIPT_URL}?action=getUsers`, { method: "GET", mode: "cors" });
+      const data = await res.json();
+
+      if (data.status !== 'success' || !data.users) {
+          showMessage('loginError', 'Could not retrieve users.', true);
           return;
       }
 
-      if (password !== confirmPassword) {
-          showMessage('signupError', 'Passwords do not match.', true);
+      const user = data.users.find(u => u.email === email && u.password === password);
+      if (!user) {
+          showMessage('loginError', 'Invalid email or password.', true);
           return;
       }
 
-      try {
-          const res = await fetch(SCRIPT_URL, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ action: 'signup', name, email, password })
-          });
+      currentUser = user;
+      localStorage.setItem('currentUser', JSON.stringify(user));
+      updateUIForLoggedInUser();
 
-          const result = await res.json();
+      showMessage('loginSuccess', 'Login successful!');
+      setTimeout(() => closeModal('loginModal'), 1500);
+  } catch (err) {
+      showMessage('loginError', 'Server error.', true);
+  }
+});
 
-          if (result.status !== 'success') {
-              showMessage('signupError', result.message || 'Signup failed.', true);
-              return;
-          }
+// Signup handler
+document.getElementById('signupForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  clearMessages();
 
-          showMessage('signupSuccess', 'Account created!');
-          setTimeout(() => closeModal('signupModal'), 1500);
-      } catch (err) {
-          showMessage('signupError', 'Server error.', true);
-      }
-  });
+  const name = document.getElementById('signupName').value.trim();
+  const email = document.getElementById('signupEmail').value.trim().toLowerCase();
+  const password = document.getElementById('signupPassword').value;
+  const confirmPassword = document.getElementById('signupConfirmPassword').value;
+
+  if (!name || !email || !password || !confirmPassword) {
+      showMessage('signupError', 'Please fill in all fields.', true);
+      return;
+  }
+
+  if (password !== confirmPassword) {
+      showMessage('signupError', 'Passwords do not match.', true);
+      return;
+  }
+
+  try {
+      const res = await fetch(SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: 'signup', name, email, password })
+      });
+
+      const result = await res.json();
+      showMessage(result.success ? 'signupSuccess' : 'signupError', result.message, !result.success);
+      if (result.success) setTimeout(() => closeModal('signupModal'), 1500);
+  } catch (err) {
+      showMessage('signupError', 'Server error.', true);
+  }
+});
+
 
   function updateUIForLoggedInUser() {
       document.getElementById('authButtons').style.display = 'none';
