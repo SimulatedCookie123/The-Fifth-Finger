@@ -342,85 +342,7 @@ function showMessage(elementId, message, isError = false) {
   element.style.display = 'block';
   if (!isError) setTimeout(() => element.style.display = 'none', 3000);
 }
-// Login handler
-document.getElementById('loginForm').addEventListener('submit', async function(e) {
-  e.preventDefault();
-  clearMessages();
-
-  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-  const password = document.getElementById('loginPassword').value;
-
-  if (!email || !password) {
-      showMessage('loginError', 'Please fill in all fields.', true);
-      return;
-  }
-
-  try {
-      // Use JSONP to bypass CORS
-      const data = await fetchWithJsonp(`${SCRIPT_URL}?action=getUsers`);
-
-      if (data.status !== 'success' || !data.users) {
-          showMessage('loginError', 'Could not retrieve users.', true);
-          return;
-      }
-
-      const user = data.users.find(u => u.email === email && u.password === password);
-      if (!user) {
-          showMessage('loginError', 'Invalid email or password.', true);
-          return;
-      }
-
-      currentUser = user;
-      localStorage.setItem('currentUser', JSON.stringify(user));
-      updateUIForLoggedInUser();
-
-      showMessage('loginSuccess', 'Login successful!');
-      setTimeout(() => closeModal('loginModal'), 1500);
-  } catch (err) {
-      console.error('Login error:', err);
-      showMessage('loginError', 'Server error.', true);
-  }
-});
-
-// Signup handler
-document.getElementById('signupForm').addEventListener('submit', async function(e) {
-  e.preventDefault();
-  clearMessages();
-
-  const name = document.getElementById('signupName').value.trim();
-  const email = document.getElementById('signupEmail').value.trim().toLowerCase();
-  const password = document.getElementById('signupPassword').value;
-  const confirmPassword = document.getElementById('signupConfirmPassword').value;
-
-  if (!name || !email || !password || !confirmPassword) {
-      showMessage('signupError', 'Please fill in all fields.', true);
-      return;
-  }
-
-  if (password !== confirmPassword) {
-      showMessage('signupError', 'Passwords do not match.', true);
-      return;
-  }
-
-  try {
-      const res = await fetch(SCRIPT_URL, {
-          method: "POST",
-          headers: { 
-              "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ action: 'signup', name, email, password })
-      });
-
-      const result = await res.json();
-      showMessage(result.success ? 'signupSuccess' : 'signupError', result.message, !result.success);
-      if (result.success) setTimeout(() => closeModal('signupModal'), 1500);
-  } catch (err) {
-      console.error('Signup error:', err);
-      showMessage('signupError', 'Server error.', true);
-  }
-});
-
-// JSONP helper function to bypass CORS for GET requests
+// JSONP helper function to bypass CORS completely
 function fetchWithJsonp(url) {
   return new Promise((resolve, reject) => {
     const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
@@ -442,6 +364,90 @@ function fetchWithJsonp(url) {
     document.body.appendChild(script);
   });
 }
+
+// Login handler
+document.getElementById('loginForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  clearMessages();
+
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const password = document.getElementById('loginPassword').value;
+
+  if (!email || !password) {
+      showMessage('loginError', 'Please fill in all fields.', true);
+      return;
+  }
+
+  try {
+      // Use JSONP to bypass CORS completely
+      const data = await fetchWithJsonp(`${SCRIPT_URL}?action=getUsers`);
+
+      if (data.status !== 'success' || !data.users) {
+          showMessage('loginError', 'Could not retrieve users.', true);
+          return;
+      }
+
+      // Debug: Log the retrieved users and what we're looking for
+      console.log('Retrieved users:', data.users);
+      console.log('Looking for email:', email);
+      console.log('Looking for password:', password);
+      
+      const user = data.users.find(u => {
+          console.log('Checking user:', u);
+          console.log('User email:', u.email, 'Match:', u.email === email);
+          console.log('User password:', u.password, 'Match:', u.password === password);
+          return u.email === email && u.password === password;
+      });
+      
+      if (!user) {
+          showMessage('loginError', 'Invalid email or password.', true);
+          return;
+      }
+
+      currentUser = user;
+      localStorage.setItem('currentUser', JSON.stringify(user));
+      updateUIForLoggedInUser();
+
+      showMessage('loginSuccess', 'Login successful!');
+      setTimeout(() => closeModal('loginModal'), 1500);
+  } catch (err) {
+      console.error('Login error:', err);
+      showMessage('loginError', 'Server error.', true);
+  }
+});
+
+// Signup handler - now uses JSONP instead of POST
+document.getElementById('signupForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  clearMessages();
+
+  const name = document.getElementById('signupName').value.trim();
+  const email = document.getElementById('signupEmail').value.trim().toLowerCase();
+  const password = document.getElementById('signupPassword').value;
+  const confirmPassword = document.getElementById('signupConfirmPassword').value;
+
+  if (!name || !email || !password || !confirmPassword) {
+      showMessage('signupError', 'Please fill in all fields.', true);
+      return;
+  }
+
+  if (password !== confirmPassword) {
+      showMessage('signupError', 'Passwords do not match.', true);
+      return;
+  }
+
+  try {
+      // Use JSONP for signup too - encode parameters in URL
+      const signupUrl = `${SCRIPT_URL}?action=signup&name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+      const result = await fetchWithJsonp(signupUrl);
+      
+      showMessage(result.success ? 'signupSuccess' : 'signupError', result.message, !result.success);
+      if (result.success) setTimeout(() => closeModal('signupModal'), 1500);
+  } catch (err) {
+      console.error('Signup error:', err);
+      showMessage('signupError', 'Server error.', true);
+  }
+});
 
 
   function updateUIForLoggedInUser() {
