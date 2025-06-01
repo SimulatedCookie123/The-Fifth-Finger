@@ -342,7 +342,7 @@ function showMessage(elementId, message, isError = false) {
   element.style.display = 'block';
   if (!isError) setTimeout(() => element.style.display = 'none', 3000);
 }
-
+// Login handler
 document.getElementById('loginForm').addEventListener('submit', async function(e) {
   e.preventDefault();
   clearMessages();
@@ -356,10 +356,8 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
   }
 
   try {
-      const res = await fetch(`${SCRIPT_URL}?action=getUsers`, { 
-          method: "GET"
-      });
-      const data = await res.json();
+      // Use JSONP to bypass CORS
+      const data = await fetchWithJsonp(`${SCRIPT_URL}?action=getUsers`);
 
       if (data.status !== 'success' || !data.users) {
           showMessage('loginError', 'Could not retrieve users.', true);
@@ -421,6 +419,29 @@ document.getElementById('signupForm').addEventListener('submit', async function(
       showMessage('signupError', 'Server error.', true);
   }
 });
+
+// JSONP helper function to bypass CORS for GET requests
+function fetchWithJsonp(url) {
+  return new Promise((resolve, reject) => {
+    const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+    
+    window[callbackName] = function(data) {
+      delete window[callbackName];
+      document.body.removeChild(script);
+      resolve(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + callbackName;
+    script.onerror = function() {
+      delete window[callbackName];
+      document.body.removeChild(script);
+      reject(new Error('JSONP request failed'));
+    };
+    
+    document.body.appendChild(script);
+  });
+}
 
 
   function updateUIForLoggedInUser() {
