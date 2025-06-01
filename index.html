@@ -343,7 +343,6 @@ function showMessage(elementId, message, isError = false) {
   if (!isError) setTimeout(() => element.style.display = 'none', 3000);
 }
 
-// Login handler
 document.getElementById('loginForm').addEventListener('submit', async function(e) {
   e.preventDefault();
   clearMessages();
@@ -357,7 +356,9 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
   }
 
   try {
-      const res = await fetch(`${SCRIPT_URL}?action=getUsers`, { method: "GET", mode: "cors" });
+      const res = await fetch(`${SCRIPT_URL}?action=getUsers`, { 
+          method: "GET"
+      });
       const data = await res.json();
 
       if (data.status !== 'success' || !data.users) {
@@ -378,6 +379,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
       showMessage('loginSuccess', 'Login successful!');
       setTimeout(() => closeModal('loginModal'), 1500);
   } catch (err) {
+      console.error('Login error:', err);
       showMessage('loginError', 'Server error.', true);
   }
 });
@@ -405,7 +407,9 @@ document.getElementById('signupForm').addEventListener('submit', async function(
   try {
       const res = await fetch(SCRIPT_URL, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+              "Content-Type": "application/json"
+          },
           body: JSON.stringify({ action: 'signup', name, email, password })
       });
 
@@ -413,6 +417,7 @@ document.getElementById('signupForm').addEventListener('submit', async function(
       showMessage(result.success ? 'signupSuccess' : 'signupError', result.message, !result.success);
       if (result.success) setTimeout(() => closeModal('signupModal'), 1500);
   } catch (err) {
+      console.error('Signup error:', err);
       showMessage('signupError', 'Server error.', true);
   }
 });
