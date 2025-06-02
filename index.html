@@ -197,6 +197,9 @@
                     <button type="submit" class="auth-btn" id="loginBtn">Sign In</button>
                 </form>
                 <div class="auth-switch">
+                    <a href="#" onclick="handleForgotPassword()">Forgot Password?</a>
+                </div>
+                <div class="auth-switch">
                     Don't have an account? <a href="#" onclick="switchToSignup()">Sign up here</a>
                 </div>
             </div>
@@ -223,6 +226,11 @@
                         <input type="email" id="signupEmail" name="email" required>
                     </div>
 
+                    
+                    <div class="form-group">
+                        <label for="signupPhone">Phone Number</label>
+                        <input type="tel" id="signupPhone" name="phone" required>
+                    </div>
                     <div class="form-group">
                         <label for="signupPassword">Password</label>
                         <input type="password" id="signupPassword" name="password" required minlength="6">
@@ -233,6 +241,9 @@
                     </div>
                     <button type="submit" class="auth-btn" id="signupBtn">Create Account</button>
                 </form>
+                <div class="auth-switch">
+                    <a href="#" onclick="handleForgotPassword()">Forgot Password?</a>
+                </div>
                 <div class="auth-switch">
                     Already have an account? <a href="#" onclick="switchToLogin()">Sign in here</a>
                 </div>
@@ -264,10 +275,14 @@
                         <input type="tel" id="profilePhone" name="phone">
                     </div>
                     <div class="form-group">
+                        <label for="profilePassword">New Password</label>
+                        <input type="password" id="profilePassword" name="password">
+                    </div>
+                    <div class="form-group">
                         <label for="profileBio">Bio</label>
                         <textarea id="profileBio" name="bio" rows="3" style="width: 100%; padding: 12px 15px; border: 2px solid #e1e5e9; border-radius: 8px; font-family: inherit; resize: vertical;"></textarea>
                     </div>
-                    <button type="submit" class="auth-btn">Update Profile</button>
+                    <button type="submit" class="auth-btn" >Update Profile</button>
                 </form>
             </div>
         </div>
@@ -426,7 +441,6 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
   }
 });
 
-// Signup handler - now uses JSONP instead of POST
 document.getElementById('signupForm').addEventListener('submit', async function(e) {
   e.preventDefault();
   clearMessages();
@@ -435,8 +449,9 @@ document.getElementById('signupForm').addEventListener('submit', async function(
   const email = document.getElementById('signupEmail').value.trim().toLowerCase();
   const password = document.getElementById('signupPassword').value;
   const confirmPassword = document.getElementById('signupConfirmPassword').value;
+  const phone = document.getElementById('signupPhone').value.trim();
 
-  if (!name || !email || !password || !confirmPassword) {
+  if (!name || !email || !password || !confirmPassword || !phone) {
       showMessage('signupError', 'Please fill in all fields.', true);
       return;
   }
@@ -447,12 +462,21 @@ document.getElementById('signupForm').addEventListener('submit', async function(
   }
 
   try {
-      // Use JSONP for signup too - encode parameters in URL
-      const signupUrl = `${SCRIPT_URL}?action=signup&name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
-      const result = await fetchWithJsonp(signupUrl);
+      const signupUrl = `${SCRIPT_URL}?action=signup`
+          + `&name=${encodeURIComponent(name)}`
+          + `&email=${encodeURIComponent(email)}`
+          + `&password=${encodeURIComponent(password)}`
+          + `&phone=${encodeURIComponent(phone)}`;
       
+      const result = await fetchWithJsonp(signupUrl);
+
       showMessage(result.success ? 'signupSuccess' : 'signupError', result.message, !result.success);
-      if (result.success) setTimeout(() => closeModal('signupModal'), 1500);
+
+      if (result.success) {
+          
+          setTimeout(() => closeModal('signupModal'), 1500);
+          document.getElementById('signupForm').reset(); // 
+      }
   } catch (err) {
       console.error('Signup error:', err);
       showMessage('signupError', 'Server error.', true);
@@ -460,36 +484,42 @@ document.getElementById('signupForm').addEventListener('submit', async function(
 });
 
 
+
         // Profile form handler
-        document.getElementById('profileForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            clearMessages();
+        // Profile form handler (with Google Sheet update via JSONP)
+document.getElementById('profileForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    clearMessages();
 
-            if (!currentUser) return;
+    if (!currentUser) return;
 
-            const name = document.getElementById('profileName').value.trim();
-            const phone = document.getElementById('profilePhone').value.trim();
-            const bio = document.getElementById('profileBio').value.trim();
+    const name = document.getElementById('profileName').value.trim();
+    const phone = document.getElementById('profilePhone').value.trim();
+    const bio = document.getElementById('profileBio').value.trim();
+    const password = document.getElementById('profilePassword').value.trim(); // new field
+    const email = currentUser.email;
 
-            if (!name) {
-                showMessage('profileError', 'Name is required.', true);
-                return;
-            }
+    const updateUrl = `${SCRIPT_URL}?action=updateProfile&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}&bio=${encodeURIComponent(bio)}&password=${encodeURIComponent(password)}`;
 
-            // Update current user
+    try {
+        const result = await fetchWithJsonp(updateUrl);
+        if (result.success) {
             currentUser.name = name;
             currentUser.phone = phone;
             currentUser.bio = bio;
-
-            // Update in users array
-            const userIndex = users.findIndex(u => u.id === currentUser.id);
-            if (userIndex !== -1) {
-                users[userIndex] = { ...currentUser };
-            }
-
+            if (password) currentUser.password = password;
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
             updateUIForLoggedInUser();
-            showMessage('profileSuccess', 'Profile updated successfully!');
-        });
+            showMessage('profileSuccess', result.message);
+        } else {
+            showMessage('profileError', result.message, true);
+        }
+    } catch (err) {
+        console.error('Profile update error:', err);
+        showMessage('profileError', 'Failed to update profile.', true);
+    }
+});
+
 
         // UI update functions
         function updateUIForLoggedInUser() {
@@ -669,3 +699,38 @@ document.getElementById('signupForm').addEventListener('submit', async function(
 </script>
 </body>
 </html>
+<script>
+
+function handleForgotPassword() {
+    const email = prompt('Enter your registered email:');
+    if (!email) return;
+
+    const name = prompt('Enter your full name:');
+    if (!name) return;
+
+    const phone = prompt('Enter your phone number:');
+    if (!phone) return;
+
+    const newPassword = prompt('Enter your new password:');
+    if (!newPassword) return;
+
+    const resetUrl = `${SCRIPT_URL}?action=resetPassword`
+        + `&email=${encodeURIComponent(email)}`        // Removed .trim().toLowerCase()
+        + `&name=${encodeURIComponent(name)}`          // Removed .trim().toLowerCase()
+        + `&phone=${encodeURIComponent(phone)}`        // Removed .trim()
+        + `&newPassword=${encodeURIComponent(newPassword)}`;
+
+    fetchWithJsonp(resetUrl)
+        .then(response => {
+            alert(response.message);
+        })
+        .catch(err => {
+            console.error('Password reset failed:', err);
+            alert('Something went wrong. Please try again.');
+        });
+}
+
+
+
+
+</script>
